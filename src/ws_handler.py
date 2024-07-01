@@ -24,7 +24,6 @@ bucket = os.getenv("INFLUXDB_BUCKET")
 client = influxdb_client.InfluxDBClient(url=url, token=token, org=org)
 write_api = client.write_api(write_options=SYNCHRONOUS)
 
-
 def extract_symbol(self, input_string):
     match = re.search(r"([A-Z]+)", input_string)
     if match:
@@ -50,28 +49,26 @@ class ApiCallHandler:
                 )
 
             except Exception as e:
-                logging.error(f"Error processing API call for {stock_ticker.sym}: {e}")
+                logging.error(f"Error processing API call for {stock_ticker.symbol}: {e}")
             finally:
                 self.api_call_queue.task_done()
 
     def process_aggregate(self, stock_ticker):
         point = Point("current_price") \
                     .tag("ticker", extract_symbol(stock_ticker)) \
-                    .field("price", stock_ticker.c) \
+                    .field("price", stock_ticker.close) \
                     .field("updated", current_datetime) \
                     .time(static_time)
         write_api.write(bucket=bucket, org=org, record=point)
 
         point = Point("current_volume") \
                     .tag("ticker", extract_symbol(stock_ticker)) \
-                    .field("price", stock_ticker.c) \
+                    .field("volume", stock_ticker.accumulated_volume) \
                     .field("updated", current_datetime) \
                     .time(static_time)
         write_api.write(bucket=bucket, org=org, record=point)
-        logging.info(f"Live Price Updated {stock_ticker.sym}")
+        logging.info(f"Live Price Updated {stock_ticker.symbol}")
        
-
-
 class MessageHandler:
     def __init__(self, api_call_handler):
         self.handler_queue = asyncio.Queue()
@@ -87,8 +84,8 @@ class MessageHandler:
             try:
 
                 for trade in message_response:
-                    ticker = extract_symbol(trade.sym)
-                    if ticker.c > 1 and ticker.c < 23:
+                    ticker = extract_symbol(trade.symbol)
+                    if ticker.close > 1 and ticker.close < 23:
                         asyncio.create_task(
                             self.api_call_handler.enqueue_api_call(trade)
                         )
@@ -96,7 +93,6 @@ class MessageHandler:
                 logging.error(f"Error handling message: {e}")
             finally:
                 self.handler_queue.task_done()
-
 
 class MyClient:
     def __init__(self, feed, market, subscriptions):
@@ -120,7 +116,6 @@ class MyClient:
             )
         except Exception as e:
             logging.error(f"Error in event stream: {e}")
-
 
 async def main():
     logging.basicConfig(level=logging.INFO)

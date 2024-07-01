@@ -48,7 +48,7 @@ class ApiCallHandler:
                 contract = await asyncio.get_running_loop().run_in_executor(
                     self.executor, self.process_aggregate, stock_ticker
                 )
-                print(contract)  # Or process the contract data as needed
+
             except Exception as e:
                 logging.error(f"Error processing API call for {stock_ticker.sym}: {e}")
             finally:

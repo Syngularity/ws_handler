@@ -127,6 +127,7 @@ async def main():
     my_client = MyClient(
         feed=Feed.Delayed, market=Market.Stocks, subscriptions=["AM.*"]
     )
+    logging.info("WebSocket Handler Loaded!")
     await my_client.start_event_stream()
 
 

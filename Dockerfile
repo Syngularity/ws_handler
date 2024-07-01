@@ -12,4 +12,4 @@ RUN pip install --upgrade pip \
 
 COPY . /app/
 
-CMD ["python", "src/parse_floats.py"]
+CMD ["python", "src/ws_handler.py"]

@@ -1,0 +1,4 @@
+influxdb-client==1.44.0
+polygon==1.2.0
+polygon-api-client==1.14.0
+

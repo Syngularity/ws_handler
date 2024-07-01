@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: live-price-handler-deployment
+  namespace: stock
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: live-price-handler
+  template:
+    metadata:
+      labels:
+        app: live-price-handler
+    spec:
+      containers:
+      - name: stock-live-price-handler
+        image: artifacts.tekuro.io/live-price-handler:latest
+        env:
+          - name: INFLUXDB_ORG
+            valueFrom:
+              secretKeyRef:
+                name: influxdb-secrets
+                key: org
+          - name: INFLUXDB_URL
+            valueFrom:
+              secretKeyRef:
+                name: influxdb-secrets
+                key: host
+          - name: INFLUXDB_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: influxdb-secrets
+                key: token
+          - name: INFLUXDB_BUCKET
+            valueFrom:
+              secretKeyRef:
+                name: influxdb-secrets
+                key: db
+          - name: POLYGON_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: polygon-api-secrets
+                key: key
+      restartPolicy: Always
+      imagePullSecrets:
+        - name: regcred

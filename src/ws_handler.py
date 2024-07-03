@@ -13,7 +13,7 @@ from influxdb_client.client.write_api import SYNCHRONOUS
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 current_datetime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-static_time = datetime(1970, 1, 1, 0, 0).isoformat() + 'Z'
+static_time = datetime.now().strftime('%Y-%m-%d')
 
 # InfluxDB setup
 org = os.getenv("INFLUXDB_ORG")
@@ -23,13 +23,6 @@ bucket = os.getenv("INFLUXDB_BUCKET")
 
 client = influxdb_client.InfluxDBClient(url=url, token=token, org=org)
 write_api = client.write_api(write_options=SYNCHRONOUS)
-
-def extract_symbol(self, input_string):
-    match = re.search(r"([A-Z]+)", input_string)
-    if match:
-        return match.group(1)
-    else:
-        return None
 
 class ApiCallHandler:
     def __init__(self):
@@ -49,25 +42,26 @@ class ApiCallHandler:
                 )
 
             except Exception as e:
-                logging.error(f"Error processing API call for {stock_ticker['symbol']}: {e}")
+                logging.error(f"Error processing API call for {stock_ticker.symbol}: {e}")
             finally:
                 self.api_call_queue.task_done()
 
     def process_aggregate(self, stock_ticker):
+
         point = Point("current_price") \
-                    .tag("ticker", extract_symbol(stock_ticker['symbol'])) \
-                    .field("price", stock_ticker['close']) \
+                    .tag("ticker", stock_ticker.symbol) \
+                    .field("price", float(stock_ticker.vwap)) \
                     .field("updated", current_datetime) \
                     .time(static_time)
         write_api.write(bucket=bucket, org=org, record=point)
 
         point = Point("current_volume") \
-                    .tag("ticker", extract_symbol(stock_ticker['symbol'])) \
-                    .field("volume", stock_ticker['accumulated_volume']) \
+                    .tag("ticker", stock_ticker.symbol) \
+                    .field("volume", stock_ticker.accumulated_volume) \
                     .field("updated", current_datetime) \
                     .time(static_time)
         write_api.write(bucket=bucket, org=org, record=point)
-        logging.info(f"Live Price Updated {stock_ticker['symbol']}")
+        logging.info(f"Live Price Updated {stock_ticker.symbol}")
        
 class MessageHandler:
     def __init__(self, api_call_handler):
@@ -80,12 +74,10 @@ class MessageHandler:
     async def start_handling(self) -> None:
         while True:
             message_response = await self.handler_queue.get()
-            logging.info(f"Received message: {message_response}")
             try:
-
                 for trade in message_response:
-                    ticker = extract_symbol(trade['symbol'])
-                    if ticker.close > 1 and ticker.close < 23:
+                    if trade.close > 1 and trade.close < 23:
+                        logging.info(f"Processing message: {message_response}")
                         asyncio.create_task(
                             self.api_call_handler.enqueue_api_call(trade)
                         )
@@ -120,10 +112,9 @@ class MyClient:
 async def main():
     logging.basicConfig(level=logging.INFO)
     my_client = MyClient(
-        feed=Feed.Delayed, market=Market.Stocks, subscriptions=["AM.*"]
+        feed=Feed.Delayed, market=Market.Stocks, subscriptions=["A.*"]
     )
     logging.info("WebSocket Handler Loaded!")
     await my_client.start_event_stream()
-
 
 asyncio.run(main())

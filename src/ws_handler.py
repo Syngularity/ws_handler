@@ -9,7 +9,6 @@ from polygon import RESTClient, WebSocketClient
 from polygon.websocket.models import Market, Feed
 import influxdb_client
 from influxdb_client import InfluxDBClient, Point, WritePrecision
-from influxdb_client.client.write_api import SYNCHRONOUS
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 current_datetime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -22,7 +21,7 @@ token = os.getenv("INFLUXDB_TOKEN")
 bucket = os.getenv("INFLUXDB_BUCKET")
 
 client = influxdb_client.InfluxDBClient(url=url, token=token, org=org)
-write_api = client.write_api(write_options=SYNCHRONOUS)
+write_api = client.write_api()
 
 class ApiCallHandler:
     def __init__(self):
@@ -51,15 +50,15 @@ class ApiCallHandler:
         point = Point("current_price") \
                     .tag("ticker", stock_ticker.symbol) \
                     .field("price", float(stock_ticker.vwap)) \
-                    .field("updated", current_datetime) \
-                    .time(static_time)
+                    .field("updated", datetime.now().strftime('%Y-%m-%d %H:%M:%S')) \
+                    .time(datetime.now().strftime('%Y-%m-%d'))
         write_api.write(bucket=bucket, org=org, record=point)
 
         point = Point("current_volume") \
                     .tag("ticker", stock_ticker.symbol) \
                     .field("volume", stock_ticker.accumulated_volume) \
-                    .field("updated", current_datetime) \
-                    .time(static_time)
+                    .field("updated", datetime.now().strftime('%Y-%m-%d %H:%M:%S')) \
+                    .time(datetime.now().strftime('%Y-%m-%d'))
         write_api.write(bucket=bucket, org=org, record=point)
         logging.info(f"Live Price Updated {stock_ticker.symbol}")
        
@@ -108,6 +107,7 @@ class MyClient:
             )
         except Exception as e:
             logging.error(f"Error in event stream: {e}")
+
 
 async def main():
     logging.basicConfig(level=logging.INFO)

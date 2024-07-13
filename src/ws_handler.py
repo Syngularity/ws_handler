@@ -93,7 +93,7 @@ class MyClient:
             feed=feed,
             market=market,
             verbose=True,
-            max_reconnects=7,
+            max_reconnects=3000,
             subscriptions=subscriptions,
         )
         self.api_call_handler = ApiCallHandler()
